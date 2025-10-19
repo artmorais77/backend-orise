@@ -2,7 +2,9 @@
   "name": "project",
   "version": "1.0.0",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "dev": "tsx watch --env-file .env src/server.ts"
+  },
   "author": "artmorais77",
   "license": "ISC",
   "dependencies": {
