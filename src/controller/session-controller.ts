@@ -36,7 +36,7 @@ class SessionController {
       if (!secret) throw new AppError("JWT secret não definido", 500);
       if (!expiresIn) throw new AppError("JWT expiresIn não definido", 500);
 
-      const token = sign({ userId: user.id, role: user.role }, secret, {
+      const token = sign({ userId: user.id }, secret, {
         expiresIn,
       });
 

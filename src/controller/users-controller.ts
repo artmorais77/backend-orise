@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from "express";
-import { UserRoles } from "@prisma/client";
 import { prisma } from "@/database/prisma";
 import { z } from "zod";
 import { AppError } from "@/utils/AppError";
@@ -23,10 +22,9 @@ class UserController {
             /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/,
             "A senha deve conter pelo menos uma letra e um número."
           ),
-        role: z.nativeEnum(UserRoles, { message: "Tipo de usuário inválido." }),
       });
 
-      const { name, email, password, role } = bodySchema.parse(req.body);
+      const { name, email, password } = bodySchema.parse(req.body);
 
       const userExisting = await prisma.user.findUnique({ where: { email } });
 
@@ -41,7 +39,6 @@ class UserController {
           name,
           email,
           password: hashedPassword,
-          role,
         },
       });
 
