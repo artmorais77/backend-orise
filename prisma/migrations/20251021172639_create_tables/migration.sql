@@ -1,7 +1,4 @@
 -- CreateEnum
-CREATE TYPE "UserRoles" AS ENUM ('sale', 'admin');
-
--- CreateEnum
 CREATE TYPE "PaymentType" AS ENUM ('dinheiro', 'pix', 'debito', 'credito');
 
 -- CreateEnum
@@ -13,7 +10,6 @@ CREATE TABLE "users" (
     "name" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
-    "role" "UserRoles" NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -22,23 +18,25 @@ CREATE TABLE "users" (
 
 -- CreateTable
 CREATE TABLE "products" (
-    "id" SERIAL NOT NULL,
+    "id" TEXT NOT NULL,
+    "code" INTEGER NOT NULL,
     "name" TEXT NOT NULL,
     "category" TEXT NOT NULL,
     "price" DECIMAL(65,30) NOT NULL,
-    "isActive" BOOLEAN NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "userId" TEXT NOT NULL,
 
     CONSTRAINT "products_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "sales" (
-    "id" SERIAL NOT NULL,
+    "id" TEXT NOT NULL,
     "code" INTEGER NOT NULL,
-    "cashRegisterId" INTEGER NOT NULL,
     "userId" TEXT NOT NULL,
+    "cashRegisterId" TEXT NOT NULL,
     "total" DECIMAL(65,30) NOT NULL,
     "paymentType" "PaymentType" NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -49,9 +47,9 @@ CREATE TABLE "sales" (
 
 -- CreateTable
 CREATE TABLE "sale_item" (
-    "id" SERIAL NOT NULL,
-    "saleId" INTEGER NOT NULL,
-    "productId" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "saleId" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
     "quantity" INTEGER NOT NULL,
     "price" DECIMAL(65,30) NOT NULL,
     "subtotal" DECIMAL(65,30) NOT NULL,
@@ -61,7 +59,8 @@ CREATE TABLE "sale_item" (
 
 -- CreateTable
 CREATE TABLE "cash_register" (
-    "id" SERIAL NOT NULL,
+    "id" TEXT NOT NULL,
+    "code" INTEGER NOT NULL,
     "openedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "isOpen" BOOLEAN NOT NULL,
     "initialAmount" DECIMAL(65,30) NOT NULL,
@@ -73,20 +72,12 @@ CREATE TABLE "cash_register" (
 );
 
 -- CreateTable
-CREATE TABLE "cash_register_counter" (
-    "id" SERIAL NOT NULL,
-    "counter" INTEGER NOT NULL,
-    "cashRegisterId" INTEGER NOT NULL,
-
-    CONSTRAINT "cash_register_counter_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "cash_movement" (
-    "id" SERIAL NOT NULL,
-    "cashRegisterId" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "code" INTEGER NOT NULL,
+    "cashRegisterId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "saleId" INTEGER,
+    "saleId" TEXT,
     "type" "TypeMovement" NOT NULL,
     "description" TEXT NOT NULL,
     "amount" DECIMAL(65,30) NOT NULL,
@@ -101,7 +92,19 @@ CREATE TABLE "cash_movement" (
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "cash_register_counter_cashRegisterId_key" ON "cash_register_counter"("cashRegisterId");
+CREATE UNIQUE INDEX "products_userId_code_key" ON "products"("userId", "code");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "sales_userId_code_key" ON "sales"("userId", "code");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "cash_register_openedById_code_key" ON "cash_register"("openedById", "code");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "cash_movement_userId_code_key" ON "cash_movement"("userId", "code");
+
+-- AddForeignKey
+ALTER TABLE "products" ADD CONSTRAINT "products_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "sales" ADD CONSTRAINT "sales_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -120,9 +123,6 @@ ALTER TABLE "cash_register" ADD CONSTRAINT "cash_register_openedById_fkey" FOREI
 
 -- AddForeignKey
 ALTER TABLE "cash_register" ADD CONSTRAINT "cash_register_closedById_fkey" FOREIGN KEY ("closedById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "cash_register_counter" ADD CONSTRAINT "cash_register_counter_cashRegisterId_fkey" FOREIGN KEY ("cashRegisterId") REFERENCES "cash_register"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "cash_movement" ADD CONSTRAINT "cash_movement_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

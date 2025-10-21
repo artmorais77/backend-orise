@@ -22,58 +22,62 @@ enum TypeMovement {
 model User {
   id String @id @default(uuid())
   name String
-  email String
+  email String @unique
   password String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt()
 
-  sale Sale[]
-  cashMovement CashMovement[]
-
+  products Product[]
+  sales Sale[]
+  cashMovements CashMovement[]
   cashOpened CashRegister[] @relation("cashOpened")
   cashClosed CashRegister[] @relation("cashClosed")
 
-  @@unique([email])
   @@map("users")
 }
 
 model Product {
-  id Int @id @default(autoincrement())
+  id String @id @default(uuid())
+  code Int
   name String
   category String
   price Decimal
-  isActive Boolean
+  isActive Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt()
+  userId String
 
-  saleItem SaleItem[]
+  saleItems SaleItem[]
+  user User @relation(fields: [userId], references: [id])
 
+  @@unique([userId, code])
   @@map("products")
 }
 
 model Sale {
-  id Int @id @default(autoincrement())
-  code Int 
-  cashRegisterId Int
+  id String @id @default(uuid())
+  code Int
   userId String
+  cashRegisterId String
   total Decimal
   paymentType PaymentType
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt()
 
-  saleItem SaleItem[]
-  cashMovement CashMovement[]
+  saleItems SaleItem[]
+  cashMovements CashMovement[]
 
   user User @relation(fields: [userId], references: [id])
   cashRegister CashRegister @relation(fields: [cashRegisterId], references: [id])
 
+  @@unique([userId, code])
   @@map("sales")
 }
 
 model SaleItem {
-  id Int @id @default(autoincrement())
-  saleId Int
-  productId Int
+  id String @id @default(uuid())
+  saleId String
+  productId String
   quantity Int
   price Decimal
   subtotal Decimal
@@ -85,7 +89,8 @@ model SaleItem {
 }
 
 model CashRegister {
-  id Int @id @default(autoincrement())
+  id String @id @default(uuid())
+  code Int
   openedAt DateTime @default(now())
   isOpen Boolean
   initialAmount Decimal
@@ -93,31 +98,22 @@ model CashRegister {
   openedById String
   closedById String?
 
-  sale Sale[]
-  cashRegisterCounter CashRegisterCounter?
-  cashMovement CashMovement[]
+  sales Sale[]
+  cashMovements CashMovement[]
 
   openedBy User @relation("cashOpened", fields: [openedById], references: [id])
   closedBy User? @relation("cashClosed", fields: [closedById], references: [id])
 
-  @@map("cash_register")  
-}
-
-model CashRegisterCounter {
-  id Int @id @default(autoincrement())
-  counter Int
-  cashRegisterId Int @unique
-
-  cashRegister CashRegister @relation(fields: [cashRegisterId], references: [id])
-
-  @@map("cash_register_counter")
+  @@unique([openedById, code])
+  @@map("cash_register")
 }
 
 model CashMovement {
-  id Int @id @default(autoincrement())
-  cashRegisterId Int
+  id String @id @default(uuid())
+  code Int
+  cashRegisterId String
   userId String
-  saleId Int?
+  saleId String?
   type TypeMovement
   description String
   amount Decimal
@@ -129,5 +125,15 @@ model CashMovement {
   sale Sale? @relation(fields: [saleId], references: [id])
   cashRegister CashRegister @relation(fields: [cashRegisterId], references: [id])
 
+  @@unique([userId, code])
   @@map("cash_movement")
+}
+
+model Sequence {
+  id String @id @default(uuid())
+  userId String
+  entity String  // "product", "sale", etc.
+  lastCode Int @default(0)
+
+  @@unique([userId, entity])
 }
