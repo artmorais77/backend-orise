@@ -24,7 +24,7 @@ function ensureAuthenticated(req: Request, _res: Response, next: NextFunction) {
     const { userId } = verify(token, authConfig.jwt.secret) as TokenPayload;
 
     req.user = {
-      id: userId,
+      userId: userId,
     };
 
     next();
