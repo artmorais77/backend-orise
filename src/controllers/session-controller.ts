@@ -11,8 +11,7 @@ class SessionController {
     try {
       const bodySchema = z.object({
         email: z
-          .string({ message: "O e-mail deve ser um texto válido." })
-          .email("Informe um e-mail válido."),
+          .email({ message: "Informe um e-mail válido."}),
         password: z
           .string({ message: "A senha deve ser um texto válido." }),
       });
