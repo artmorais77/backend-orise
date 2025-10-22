@@ -1,35 +1,18 @@
 import { prisma } from "@/database/prisma";
+import { codesSchema } from "@/schemas/codes-schemas";
+import { productsBodySchema, productsParamsSchema, productsQuerySchema } from "@/schemas/products-schemas";
+import { userIdSchema } from "@/schemas/user-id-schemas";
 import { AppError } from "@/utils/AppError";
 import { Request, Response, NextFunction } from "express";
-import { z } from "zod";
 
 class ProductsController {
   async index(req: Request, res: Response, next: NextFunction) {
     try {
-      const reqSchema = z.object({
-        userId: z.uuid(),
-      });
+      const { userId } = userIdSchema.parse(req.user);
 
-      const { userId } = reqSchema.parse(req.user);
 
-      const querySchema = z.object({
-        name: z.string().trim().optional(),
-        category: z.string().trim().optional(),
-        price: z.preprocess(
-          (val) => (val ? Number(val) : undefined),
-          z.number().positive().optional()
-        ),
-        page: z.preprocess(
-          (val) => (val ? Number(val) : undefined),
-          z.number().positive().default(1)
-        ),
-        limit: z.preprocess(
-          (val) => (val ? Number(val) : undefined),
-          z.number().positive().default(10)
-        ),
-      });
 
-      const { name, category, price, page, limit } = querySchema.parse(
+      const { name, category, price, page, limit } = productsQuerySchema.parse(
         req.query
       );
 
@@ -77,27 +60,18 @@ class ProductsController {
 
   async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const reqSchema = z.object({
-        userId: z.uuid(),
-      });
+      const { userId } = userIdSchema.parse(req.user);
+      const { product } = codesSchema.parse(req.codes)
 
-      const { userId } = reqSchema.parse(req.user);
+      console.log(product)
 
-      const bodySchema = z.object({
-        name: z
-          .string("O nome deve ser um texto válido.")
-          .trim()
-          .min(1, "O nome deve ter pelo menos 2 caracteres"),
-        category: z
-          .string("A categoria deve ser um texto válido.")
-          .trim()
-          .min(1, "A categoria deve ter pelo menos 2 caracteres"),
-        price: z
-          .number("O preço deve ser um numero")
-          .positive("O preço deve ser maior que 0"),
-      });
+      if(!product) {
+        throw new AppError("O código do produto é obrigatório")
+      }
 
-      const { name, category, price } = bodySchema.parse(req.body);
+
+
+      const { name, category, price } = productsBodySchema.parse(req.body);
 
       const productsExisting = await prisma.product.findFirst({
         where: { name: { equals: name, mode: "insensitive" }, userId },
@@ -107,21 +81,9 @@ class ProductsController {
         throw new AppError("Ja existe um produto com esse nome");
       }
 
-      const sequence = await prisma.sequence.upsert({
-        where: { userId_entity: { userId, entity: "product" } },
-        update: {
-          lastCode: { increment: 1 },
-        },
-        create: {
-          userId,
-          entity: "product",
-          lastCode: 1,
-        },
-      });
-
       const newProduct = await prisma.product.create({
         data: {
-          code: sequence.lastCode,
+          code: product,
           name,
           category,
           price: Number(price),
@@ -140,31 +102,9 @@ class ProductsController {
 
   async update(req: Request, res: Response, next: NextFunction) {
     try {
-      const reqSchema = z.object({
-        userId: z.uuid(),
-      });
+      const { userId } = userIdSchema.parse(req.user);
 
-      const { userId } = reqSchema.parse(req.user);
-
-      const paramsSchema = z.object({
-        productId: z.uuid(),
-      });
-
-      const bodySchema = z.object({
-        name: z
-          .string("O nome deve ser um texto válido.")
-          .trim()
-          .min(1, "O nome deve ter pelo menos 2 caracteres"),
-        category: z
-          .string("A categoria deve ser um texto válido.")
-          .trim()
-          .min(1, "A categoria deve ter pelo menos 2 caracteres"),
-        price: z
-          .number("O preço deve ser um numero")
-          .positive("O preço deve ser maior que 0"),
-      });
-
-      const { productId } = paramsSchema.parse(req.params);
+      const { productId } = productsParamsSchema.parse(req.params);
 
       const existingProduct = await prisma.product.findFirst({
         where: { id: productId, userId },
@@ -174,7 +114,7 @@ class ProductsController {
         throw new AppError("Produto inexistente.");
       }
 
-      const { name, category, price } = bodySchema.parse(req.body);
+      const { name, category, price } = productsBodySchema.parse(req.body);
 
       const duplicateProduct = await prisma.product.findFirst({
         where: {
@@ -211,17 +151,9 @@ class ProductsController {
 
   async delete(req: Request, res: Response, next: NextFunction) {
     try {
-      const reqSchema = z.object({
-        userId: z.uuid(),
-      });
+      const { userId } = userIdSchema.parse(req.user);
 
-      const { userId } = reqSchema.parse(req.user);
-
-      const paramsSchema = z.object({
-        productId: z.uuid(),
-      });
-
-      const { productId } = paramsSchema.parse(req.params);
+      const { productId } = productsParamsSchema.parse(req.params);
 
       const existingProduct = await prisma.product.findFirst({
         where: { id: productId, userId },

@@ -1,22 +1,15 @@
 import { authConfig } from "@/config/auth";
 import { prisma } from "@/database/prisma";
+import { sessionBodySchema } from "@/schemas/session-schemas";
 import { AppError } from "@/utils/AppError";
 import { compare } from "bcrypt";
 import { Request, Response, NextFunction } from "express";
 import { sign } from "jsonwebtoken";
-import { z } from "zod";
 
 class SessionController {
   async login(req: Request, res: Response, next: NextFunction) {
     try {
-      const bodySchema = z.object({
-        email: z
-          .email({ message: "Informe um e-mail válido."}),
-        password: z
-          .string({ message: "A senha deve ser um texto válido." }),
-      });
-
-      const { email, password } = bodySchema.parse(req.body);
+      const { email, password } = sessionBodySchema.parse(req.body);
 
       const user = await prisma.user.findUnique({ where: { email } });
 
