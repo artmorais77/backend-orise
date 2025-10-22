@@ -8,6 +8,11 @@ const cashRegisterController = new CashRegisterController();
 
 cashRegisterRoutes.use(ensureAuthenticated);
 
+cashRegisterRoutes.get(
+  "/current",
+  cashRegisterController.show
+)
+
 cashRegisterRoutes.post(
   "/open",
   autoIncrementCode(["cashRegister", "cashMovement"]),

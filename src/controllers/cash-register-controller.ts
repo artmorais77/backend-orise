@@ -115,7 +115,7 @@ class CashRegisterController {
 
       const closeCash = await prisma.cashRegister.update({
         where: { id: cashRegisterId },
-        data: { closedById: userId, finalAmount: saldoFinal },
+        data: { isOpen: false, closedById: userId, finalAmount: saldoFinal },
       });
 
       const registerCashMovement = await prisma.cashMovement.create({
@@ -141,6 +141,26 @@ class CashRegisterController {
     } catch (error) {
       next(error);
       return;
+    }
+  }
+
+  async show(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { userId } = userIdSchema.parse(req.user);
+
+      const OpenedCash = await prisma.cashRegister.findFirst({
+        where: {
+          openedById: userId,
+          isOpen: true,
+        },
+        include: {
+          cashMovements: true,
+        },
+      });
+
+      return res.status(200).json(OpenedCash);
+    } catch (error) {
+      return next(error);
     }
   }
 }
