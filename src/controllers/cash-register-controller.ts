@@ -70,7 +70,7 @@ class CashRegisterController {
     }
   }
 
-  async closedCash(req: Request, res: Response, next: NextFunction) {
+  async closeCash(req: Request, res: Response, next: NextFunction) {
     try {
       const { cashRegisterId } = cashRegisterParamsSchema.parse(req.params);
       const { userId } = userIdSchema.parse(req.user);

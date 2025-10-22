@@ -16,7 +16,7 @@ cashRegisterRoutes.post(
 cashRegisterRoutes.patch(
   "/:cashRegisterId/close",
   autoIncrementCode(["cashMovement"]),
-  cashRegisterController.closedCash
+  cashRegisterController.closeCash
 );
 
 export { cashRegisterRoutes };
