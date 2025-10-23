@@ -19,55 +19,90 @@ enum TypeMovement {
   saida
 }
 
-model User {
-  id String @id @default(uuid())
-  name String
-  email String @unique
-  password String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt()
+model Store {
+  id            String   @id @default(uuid())
+  name          String   @unique
+  tradeName     String?
+  cnpj          String   @unique
+  email         String?  @unique
+  phoneNumber   String?
+  street        String?
+  addressNumber String?
+  complement    String?
+  neighborhood  String?
+  city          String?
+  state         String?
+  cep           String?
+  country       String?  @default("Brasil")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  products Product[]
-  sales Sale[]
+  user         User[]
+  product      Product[]
+  sale         Sale[]
+  saleItem     SaleItem[]
+  cashRegister CashRegister[]
+  cashMovement CashMovement[]
+  sequence     Sequence[]
+}
+
+model User {
+  id          String   @id @default(uuid())
+  storeId     String
+  name        String
+  phoneNumber String
+  email       String   @unique
+  password    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt()
+
+  products      Product[]
+  sales         Sale[]
   cashMovements CashMovement[]
-  cashOpened CashRegister[] @relation("cashOpened")
-  cashClosed CashRegister[] @relation("cashClosed")
+  cashOpened    CashRegister[] @relation("cashOpened")
+  cashClosed    CashRegister[] @relation("cashClosed")
+
+  store Store @relation(fields: [storeId], references: [id])
 
   @@map("users")
 }
 
 model Product {
-  id String @id @default(uuid())
-  code Int
-  name String
-  category String
-  price Decimal
-  isActive Boolean @default(true)
+  id        String   @id @default(uuid())
+  storeId   String
+  code      Int
+  name      String
+  category  String
+  price     Decimal
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt()
-  userId String
+  userId    String
 
+  store     Store      @relation(fields: [storeId], references: [id])
   saleItems SaleItem[]
-  user User @relation(fields: [userId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
 
   @@unique([userId, code])
   @@map("products")
 }
 
 model Sale {
-  id String @id @default(uuid())
-  code Int
-  userId String
+  id             String      @id @default(uuid())
+  storeId        String
+  code           Int
+  userId         String
   cashRegisterId String
-  total Decimal
-  paymentType PaymentType
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt()
+  total          Decimal
+  paymentType    PaymentType
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt()
 
-  saleItems SaleItem[]
+  saleItems     SaleItem[]
   cashMovements CashMovement[]
 
-  user User @relation(fields: [userId], references: [id])
+  store        Store        @relation(fields: [storeId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
   cashRegister CashRegister @relation(fields: [cashRegisterId], references: [id])
 
   @@unique([userId, code])
@@ -75,54 +110,60 @@ model Sale {
 }
 
 model SaleItem {
-  id String @id @default(uuid())
-  saleId String
+  id        String  @id @default(uuid())
+  storeId   String
+  saleId    String
   productId String
-  quantity Int
-  price Decimal
-  subtotal Decimal
+  quantity  Int
+  price     Decimal
+  subtotal  Decimal
 
-  sale Sale @relation(fields: [saleId], references: [id])
+  store   Store   @relation(fields: [storeId], references: [id])
+  sale    Sale    @relation(fields: [saleId], references: [id])
   product Product @relation(fields: [productId], references: [id])
 
   @@map("sale_item")
 }
 
 model CashRegister {
-  id String @id @default(uuid())
-  code Int
-  openedAt DateTime @default(now())
-  isOpen Boolean
+  id            String   @id @default(uuid())
+  storeId       String
+  code          Int
+  openedAt      DateTime @default(now())
+  isOpen        Boolean
   initialAmount Decimal
-  finalAmount Decimal?
-  openedById String
-  closedById String?
+  finalAmount   Decimal?
+  openedById    String
+  closedById    String?
 
-  sales Sale[]
+  sales         Sale[]
   cashMovements CashMovement[]
 
-  openedBy User @relation("cashOpened", fields: [openedById], references: [id])
-  closedBy User? @relation("cashClosed", fields: [closedById], references: [id])
+  store    Store? @relation(fields: [storeId], references: [id])
+  openedBy User   @relation("cashOpened", fields: [openedById], references: [id])
+  closedBy User?  @relation("cashClosed", fields: [closedById], references: [id])
 
   @@unique([openedById, code])
   @@map("cash_register")
 }
 
 model CashMovement {
-  id String @id @default(uuid())
-  code Int
+  id             String       @id @default(uuid())
+  storeId        String
+  code           Int
   cashRegisterId String
-  userId String
-  saleId String?
-  type TypeMovement
-  description String
-  amount Decimal
-  paymentType PaymentType
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt()
+  userId         String
+  saleId         String?
+  type           TypeMovement
+  description    String
+  amount         Decimal
+  paymentType    PaymentType
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt()
 
-  user User @relation(fields: [userId], references: [id])
-  sale Sale? @relation(fields: [saleId], references: [id])
+  store        Store        @relation(fields: [storeId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+  sale         Sale?        @relation(fields: [saleId], references: [id])
   cashRegister CashRegister @relation(fields: [cashRegisterId], references: [id])
 
   @@unique([userId, code])
@@ -130,10 +171,13 @@ model CashMovement {
 }
 
 model Sequence {
-  id String @id @default(uuid())
-  userId String
-  entity String  // "product", "sale", etc.
-  lastCode Int @default(0)
+  id       String @id @default(uuid())
+  storeId  String
+  userId   String
+  entity   String
+  lastCode Int    @default(0)
+
+  store Store @relation(fields: [storeId], references: [id])
 
   @@unique([userId, entity])
 }

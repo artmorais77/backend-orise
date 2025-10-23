@@ -8,9 +8,7 @@ import { Request, Response, NextFunction } from "express";
 class ProductsController {
   async index(req: Request, res: Response, next: NextFunction) {
     try {
-      const { userId } = userIdSchema.parse(req.user);
-
-
+      const { storeId } = userIdSchema.parse(req.user);
 
       const { name, category, price, page, limit } = productsQuerySchema.parse(
         req.query
@@ -19,7 +17,7 @@ class ProductsController {
       const skip = (page - 1) * limit;
 
       const filters: any = {
-        userId,
+        storeId,
       };
 
       if (name) filters.name = { equals: name, mode: "insensitive" };
@@ -60,16 +58,12 @@ class ProductsController {
 
   async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const { userId } = userIdSchema.parse(req.user);
+      const { userId, storeId } = userIdSchema.parse(req.user);
       const { product } = codesSchema.parse(req.codes)
-
-      console.log(product)
 
       if(!product) {
         throw new AppError("O código do produto é obrigatório")
       }
-
-
 
       const { name, category, price } = productsBodySchema.parse(req.body);
 
@@ -83,11 +77,12 @@ class ProductsController {
 
       const newProduct = await prisma.product.create({
         data: {
+          storeId: storeId,
           code: product,
-          name,
-          category,
+          name: name,
+          category: category,
           price: Number(price),
-          userId,
+          userId: userId,
         },
       });
 

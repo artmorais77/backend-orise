@@ -5,6 +5,7 @@ import { verify } from "jsonwebtoken";
 
 interface TokenPayload {
   userId: string
+  storeId: string
 }
 
 function ensureAuthenticated(req: Request, _res: Response, next: NextFunction) {
@@ -21,10 +22,11 @@ function ensureAuthenticated(req: Request, _res: Response, next: NextFunction) {
       throw new AppError("Token não fornecido");
     }
 
-    const { userId } = verify(token, authConfig.jwt.secret) as TokenPayload;
+    const { userId, storeId } = verify(token, authConfig.jwt.secret) as TokenPayload;
 
     req.user = {
       userId: userId,
+      storeId: storeId,
     };
 
     next();

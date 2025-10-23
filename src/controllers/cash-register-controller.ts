@@ -11,7 +11,7 @@ import { Request, Response, NextFunction } from "express";
 class CashRegisterController {
   async openCash(req: Request, res: Response, next: NextFunction) {
     try {
-      const { userId } = userIdSchema.parse(req.user);
+      const { userId, storeId } = userIdSchema.parse(req.user);
       const { cashMovement, cashRegister } = codesSchema.parse(req.codes);
       const { initialAmount } = cashRegisterBodySchema.parse(req.body);
 
@@ -35,24 +35,20 @@ class CashRegisterController {
 
       const openCash = await prisma.cashRegister.create({
         data: {
+          storeId: storeId,
           code: cashRegister,
           initialAmount: initialAmount,
           isOpen: true,
-          openedBy: {
-            connect: { id: userId },
-          },
+          openedById: userId,
         },
       });
 
       const registerCashMovement = await prisma.cashMovement.create({
         data: {
+          storeId: storeId,
           code: cashMovement,
-          cashRegister: {
-            connect: { id: openCash.id },
-          },
-          user: {
-            connect: { id: userId },
-          },
+          cashRegisterId: openCash.id,
+          userId: userId,
           type: "entrada",
           description: "Abertura de caixa",
           amount: openCash.initialAmount,
@@ -73,7 +69,7 @@ class CashRegisterController {
   async closeCash(req: Request, res: Response, next: NextFunction) {
     try {
       const { cashRegisterId } = cashRegisterParamsSchema.parse(req.params);
-      const { userId } = userIdSchema.parse(req.user);
+      const { userId, storeId } = userIdSchema.parse(req.user);
       const { cashMovement } = codesSchema.parse(req.codes);
 
       if (!cashMovement) {
@@ -120,13 +116,10 @@ class CashRegisterController {
 
       const registerCashMovement = await prisma.cashMovement.create({
         data: {
+          storeId: storeId,
           code: cashMovement,
-          cashRegister: {
-            connect: { id: cashRegisterId },
-          },
-          user: {
-            connect: { id: userId },
-          },
+          cashRegisterId: cashRegisterId,
+          userId: userId,
           type: "saida",
           description: "Fechamento de caixa",
           amount: saldoFinal,
@@ -146,11 +139,11 @@ class CashRegisterController {
 
   async show(req: Request, res: Response, next: NextFunction) {
     try {
-      const { userId } = userIdSchema.parse(req.user);
+      const { storeId } = userIdSchema.parse(req.user);
 
       const OpenedCash = await prisma.cashRegister.findFirst({
         where: {
-          openedById: userId,
+          storeId: storeId,
           isOpen: true,
         },
         include: {
