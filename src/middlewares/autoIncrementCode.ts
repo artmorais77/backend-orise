@@ -7,19 +7,18 @@ type EntityType = "product" | "cashRegister" | "cashMovement" | "sale";
 function autoIncrementCode(entities: EntityType[]) {
   return async (req: Request, _res: Response, next: NextFunction) => {
     try {
-      const { userId, storeId } = userIdSchema.parse(req.user);
+      const { storeId } = userIdSchema.parse(req.user);
 
       const codes = {} as any;
 
       for (const entity of entities) {
         const sequence = await prisma.sequence.upsert({
-          where: { userId_entity: { userId, entity } },
+          where: { storeId_entity: { storeId, entity } },
           update: {
             lastCode: { increment: 1 },
           },
           create: {
             storeId,
-            userId,
             entity,
             lastCode: 1,
           },

@@ -173,11 +173,10 @@ model CashMovement {
 model Sequence {
   id       String @id @default(uuid())
   storeId  String
-  userId   String
   entity   String
   lastCode Int    @default(0)
 
   store Store @relation(fields: [storeId], references: [id])
 
-  @@unique([userId, entity])
+  @@unique([storeId, entity])
 }
