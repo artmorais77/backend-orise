@@ -1,11 +1,15 @@
 import { prisma } from "@/database/prisma";
 import { codesSchema } from "@/schemas/codes-schemas";
-import { saleBodySchema, saleParamsSchema } from "@/schemas/sale-schemas";
+import {
+  saleBodySchema,
+  saleParamsSchema,
+  saleQuerySchema,
+} from "@/schemas/sale-schemas";
 import { userIdSchema } from "@/schemas/user-id-schemas";
 import { AppError } from "@/utils/AppError";
 import { Request, Response, NextFunction } from "express";
 
-class SaleController {
+class SalesController {
   async create(req: Request, res: Response, next: NextFunction) {
     try {
       const { paymentType, items } = saleBodySchema.parse(req.body);
@@ -282,6 +286,77 @@ class SaleController {
       return next(error);
     }
   }
+
+  async index(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { storeId } = userIdSchema.parse(req.user);
+      const { code, total, status, page, limit, startDate, endDate } =
+        saleQuerySchema.parse(req.query);
+
+      const skip = (page - 1) * limit;
+
+      const filters: any = {
+        storeId,
+      };
+
+      if (code) filters.code = code;
+      if (status) filters.status = status;
+      if (total) filters.total = total;
+      if (startDate && endDate)
+        filters.createdAt = {
+          gte: new Date(startDate),
+          lte: new Date(endDate),
+        };
+
+      const [sales, totalSales] = await prisma.$transaction([
+        prisma.sale.findMany({
+          where: filters,
+          skip: skip,
+          take: limit,
+          orderBy: { code: "desc" },
+        }),
+
+        prisma.sale.count({
+          where: filters,
+        }),
+      ]);
+
+      const totalPages = Math.ceil(totalSales / limit);
+
+      res.status(200).json({
+        data: sales,
+        meta: {
+          total: totalSales,
+          page: page,
+          limit: limit,
+          totalPages: totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async show(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { saleId } = saleParamsSchema.parse(req.params);
+
+      const existingSale = await prisma.sale.findUnique({
+        where: { id: saleId },
+        include: { saleItems: true },
+      });
+
+      if (!existingSale) {
+        throw new AppError("Venda inexistente");
+      }
+
+      return res.status(200).json(existingSale);
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
 
-export { SaleController };
+export { SalesController };

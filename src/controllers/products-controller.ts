@@ -10,7 +10,7 @@ class ProductsController {
     try {
       const { storeId } = userIdSchema.parse(req.user);
 
-      const { name, category, price, page, limit } = productsQuerySchema.parse(
+      const { code, name, category, price, page, limit } = productsQuerySchema.parse(
         req.query
       );
 
@@ -24,6 +24,7 @@ class ProductsController {
       if (category)
         filters.category = { equals: category, mode: "insensitive" };
       if (price) filters.price = price;
+      if (code) filters.code = code;
 
       const [products, totalProducts] = await prisma.$transaction([
         prisma.product.findMany({

@@ -6,7 +6,7 @@ import { compare } from "bcrypt";
 import { Request, Response, NextFunction } from "express";
 import { sign } from "jsonwebtoken";
 
-class SessionController {
+class SessionsController {
   async login(req: Request, res: Response, next: NextFunction) {
     try {
       const { email, password } = sessionBodySchema.parse(req.body);
@@ -42,4 +42,4 @@ class SessionController {
   }
 }
 
-export { SessionController };
+export { SessionsController };

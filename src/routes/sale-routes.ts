@@ -1,15 +1,17 @@
 import { Router } from "express";
 import { ensureAuthenticated } from "@/middlewares/ensure-authenticated";
 import { autoIncrementCode } from "@/middlewares/autoIncrementCode";
-import { SaleController } from "@/controllers/sale-controller";
+import { SalesController } from "@/controllers/sales-controller";
 
 const saleRoutes = Router();
-const saleController = new SaleController();
+const salesController = new SalesController();
 
 saleRoutes.use(ensureAuthenticated);
 
-saleRoutes.post("/", autoIncrementCode(["sale", "cashMovement"]), saleController.create);
-saleRoutes.put("/:saleId", saleController.update);
-saleRoutes.patch("/:saleId/cancel", autoIncrementCode(["cashMovement"]), saleController.cancel);
+saleRoutes.get("/", salesController.index);
+saleRoutes.get("/:saleId", salesController.show);
+saleRoutes.post("/", autoIncrementCode(["sale", "cashMovement"]), salesController.create);
+saleRoutes.put("/:saleId", salesController.update);
+saleRoutes.patch("/:saleId/cancel", autoIncrementCode(["cashMovement"]), salesController.cancel);
 
 export { saleRoutes };

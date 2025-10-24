@@ -5,6 +5,10 @@ const productsParamsSchema = z.object({
 });
 
 const productsQuerySchema = z.object({
+  code: z.preprocess(
+    (val) => (val ? Number(val) : undefined),
+    z.number().positive().optional()
+  ),
   name: z.string().trim().optional(),
   category: z.string().trim().optional(),
   price: z.preprocess(
