@@ -9,5 +9,6 @@ const saleController = new SaleController();
 saleRoutes.use(ensureAuthenticated);
 
 saleRoutes.post("/", autoIncrementCode(["sale", "cashMovement"]), saleController.create);
+saleRoutes.put("/:saleId", saleController.update);
 
 export { saleRoutes };

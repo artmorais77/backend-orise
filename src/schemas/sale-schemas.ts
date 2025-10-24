@@ -5,10 +5,14 @@ const saleBodySchema = z.object({
   paymentType: z.enum(PaymentType),
   items: z.array(
     z.object({
-    productId: z.uuid(),
-    quantity: z.number().positive(),
-    price: z.number().positive(),
+    productId: z.uuid("O productId deve ser um uuid"),
+    quantity: z.number("A quantidade deve ser um numero").positive("A quantidade deve ser um numero positivo"),
+    price: z.number("A quantidade deve ser um numero").positive("A quantidade deve ser um numero positivo"),
   })),
 });
 
-export { saleBodySchema };
+const saleParamsSchema = z.object({
+  saleId: z.uuid("O saleId deve ser um uuid")
+})
+
+export { saleBodySchema, saleParamsSchema };
