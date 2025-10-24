@@ -118,6 +118,10 @@ class SaleController {
         throw new AppError("Venda Inexistente");
       }
 
+      if (existingSale.storeId !== storeId) {
+        throw new AppError("Não é possível alterar uma venda de outra loja");
+      }
+
       if (existingSale.status === "canceled") {
         throw new AppError(
           "Não é possível editar uma venda que já foi cancelada."
@@ -197,6 +201,82 @@ class SaleController {
       return res.status(200).json({
         message: "Venda Atualizada",
         sale: updateSale,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async cancel(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { saleId } = saleParamsSchema.parse(req.params);
+      const { storeId, userId } = userIdSchema.parse(req.user);
+      const { cashMovement } = codesSchema.parse(req.codes);
+
+      if (!cashMovement) {
+        throw new AppError("O código de cashMovement é obrigatório");
+      }
+
+      const existingSale = await prisma.sale.findUnique({
+        where: { id: saleId },
+        include: {
+          cashMovements: true,
+        },
+      });
+
+      if (!existingSale) {
+        throw new AppError("Venda Inexistente");
+      }
+
+      if (existingSale.storeId !== storeId) {
+        throw new AppError("Não é possível cancelar uma venda de outra loja");
+      }
+
+      if (existingSale.status === "canceled") {
+        throw new AppError(
+          "Não é possível cancelar uma venda que já foi cancelada."
+        );
+      }
+
+      const openedCash = await prisma.cashRegister.findFirst({
+        where: {
+          storeId,
+          isOpen: true,
+        },
+      });
+
+      if (openedCash?.id !== existingSale.cashRegisterId) {
+        throw new AppError(
+          "Esta venda só pode ser cancelada no mesmo caixa em que foi registrada."
+        );
+      }
+
+      await prisma.$transaction([
+        prisma.sale.update({
+          where: {
+            id: saleId,
+          },
+          data: {
+            status: "canceled",
+          },
+        }),
+        prisma.cashMovement.create({
+          data: {
+            storeId,
+            code: cashMovement,
+            cashRegisterId: openedCash.id,
+            userId,
+            saleId,
+            type: "saida",
+            description: `Cancelamento da venda #${existingSale.code}`,
+            amount: existingSale.total,
+            paymentType: existingSale.paymentType,
+          },
+        }),
+      ]);
+
+      res.status(200).json({
+        message: "Venda cancelada",
       });
     } catch (error) {
       return next(error);
