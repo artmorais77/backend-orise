@@ -120,6 +120,7 @@ model SaleItem {
   storeId   String
   saleId    String
   productId String
+  name String
   quantity  Int
   price     Decimal
   subtotal  Decimal

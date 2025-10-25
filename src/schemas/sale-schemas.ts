@@ -3,12 +3,8 @@ import { PaymentType, SaleStatus } from "@prisma/client";
 
 const saleBodySchema = z.object({
   paymentType: z.enum(PaymentType),
-  items: z.array(
-    z.object({
-    productId: z.uuid("O productId deve ser um uuid"),
-    quantity: z.number("A quantidade deve ser um numero").positive("A quantidade deve ser um numero positivo"),
-    price: z.number("A quantidade deve ser um numero").positive("A quantidade deve ser um numero positivo"),
-  })),
+  productId: z.uuid(),
+  quantity: z.number("A quantidade deve ser um numero").positive("A quantidade deve ser um numero positivo"),
 });
 
 const saleParamsSchema = z.object({
