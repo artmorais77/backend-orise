@@ -10,6 +10,16 @@ cashRegisterRoutes.use(ensureAuthenticated);
 
 cashRegisterRoutes.get(
   "/current",
+  cashRegisterController.checkOpen
+)
+
+cashRegisterRoutes.get(
+  "/",
+  cashRegisterController.index
+)
+
+cashRegisterRoutes.get(
+  "/:cashRegisterId",
   cashRegisterController.show
 )
 

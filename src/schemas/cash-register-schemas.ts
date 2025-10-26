@@ -10,4 +10,21 @@ const cashRegisterBodySchema = z.object({
     .positive({ message: "O initialAmount deve ser um numero" }),
 });
 
-export { cashRegisterParamsSchema, cashRegisterBodySchema };
+const cashRegisterQuerySchema = z.object({
+  code: z.preprocess(
+      (val) => (val ? Number(val) : undefined),
+      z.number().positive().optional()
+    ), 
+    startDate: z.string().trim().optional(),
+    endDate: z.string().trim().optional(),
+    page: z.preprocess(
+      (val) => (val ? Number(val) : undefined),
+      z.number().positive().default(1)
+    ),
+    limit: z.preprocess(
+      (val) => (val ? Number(val) : undefined),
+      z.number().positive().default(10)
+    ),
+})
+
+export { cashRegisterParamsSchema, cashRegisterBodySchema, cashRegisterQuerySchema };

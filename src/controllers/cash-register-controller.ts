@@ -2,6 +2,7 @@ import { prisma } from "@/database/prisma";
 import {
   cashRegisterBodySchema,
   cashRegisterParamsSchema,
+  cashRegisterQuerySchema,
 } from "@/schemas/cash-register-schemas";
 import { codesSchema } from "@/schemas/codes-schemas";
 import { userIdSchema } from "@/schemas/user-id-schemas";
@@ -137,7 +138,7 @@ class CashRegisterController {
     }
   }
 
-  async show(req: Request, res: Response, next: NextFunction) {
+  async checkOpen(req: Request, res: Response, next: NextFunction) {
     try {
       const { storeId } = userIdSchema.parse(req.user);
 
@@ -152,6 +153,62 @@ class CashRegisterController {
       });
 
       return res.status(200).json(OpenedCash);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async index(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { storeId } = userIdSchema.parse(req.user);
+      const { code, startDate, endDate, page, limit} = cashRegisterQuerySchema.parse(req.query)
+
+      const skip = (page - 1) *  limit
+
+      const filters: any = {
+        storeId,
+      }
+      
+      if(code) filters.code = code
+      if(startDate && endDate) filters.openedAt = {
+        gte: new Date(startDate),
+        lte: new Date(endDate),
+      }
+
+      const cashRegisters = await prisma.cashRegister.findMany({
+        where: filters,
+        orderBy: {code: "desc"}
+      });
+
+      return res.status(200).json(cashRegisters);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async show(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { cashRegisterId } = cashRegisterParamsSchema.parse(req.params);
+      const { storeId } = userIdSchema.parse(req.user);
+
+      const existingCash = await prisma.cashRegister.findUnique({
+        where: { id: cashRegisterId },
+        include: {
+          cashMovements: true,
+        },
+      });
+
+      if (storeId !== existingCash?.storeId) {
+        throw new AppError(
+          "Você não tem permissão para acessar informações de outra loja."
+        );
+      }
+
+      if (!existingCash) {
+        throw new AppError("Caixa inexistente");
+      }
+
+      return res.status(200).json(existingCash);
     } catch (error) {
       return next(error);
     }
