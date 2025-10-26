@@ -161,26 +161,48 @@ class CashRegisterController {
   async index(req: Request, res: Response, next: NextFunction) {
     try {
       const { storeId } = userIdSchema.parse(req.user);
-      const { code, startDate, endDate, page, limit} = cashRegisterQuerySchema.parse(req.query)
+      const { code, startDate, endDate, page, limit } =
+        cashRegisterQuerySchema.parse(req.query);
 
-      const skip = (page - 1) *  limit
+      const skip = (page - 1) * limit;
 
       const filters: any = {
         storeId,
-      }
-      
-      if(code) filters.code = code
-      if(startDate && endDate) filters.openedAt = {
-        gte: new Date(startDate),
-        lte: new Date(endDate),
-      }
+      };
 
-      const cashRegisters = await prisma.cashRegister.findMany({
-        where: filters,
-        orderBy: {code: "desc"}
+      if (code) filters.code = code;
+      if (startDate && endDate)
+        filters.openedAt = {
+          gte: new Date(startDate),
+          lte: new Date(endDate),
+        };
+
+      const [cash, totalCash] = await prisma.$transaction([
+        prisma.cashRegister.findMany({
+          where: filters,
+          orderBy: { code: "desc" },
+          skip,
+          take: limit,
+        }),
+
+        prisma.sale.count({
+          where: filters,
+        })
+      ]);
+
+      const totalPages = Math.ceil(totalCash / limit)
+
+      return res.status(200).json({
+        data: cash,
+        meta: {
+          total: totalCash,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        }
       });
-
-      return res.status(200).json(cashRegisters);
     } catch (error) {
       return next(error);
     }
