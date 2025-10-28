@@ -2,7 +2,13 @@ import { AppError } from "@/utils/AppError";
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 
-function errorHandling(error: any, _req: Request, res: Response, _next: NextFunction) {
+function errorHandling(
+  error: any,
+  _req: Request,
+  res: Response,
+  _next: NextFunction
+) {
+  console.error(error);
   if (error instanceof AppError) {
     res.status(error.statusCode).json({ message: error.message });
   }

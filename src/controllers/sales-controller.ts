@@ -12,20 +12,41 @@ import { Request, Response, NextFunction } from "express";
 class SalesController {
   async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const { paymentType, productId, quantity } = saleBodySchema.parse(
-        req.body
-      );
+      const { paymentType, items } = saleBodySchema.parse(req.body);
       const { sale, cashMovement } = codesSchema.parse(req.codes);
 
-      const productIsActive = await prisma.product.findFirst({
-        where: {
-          id: productId,
-          isActive: true,
-        },
-      });
+      const saleItems: any[] = [];
+      let saleTotal = 0;
 
-      if (!productIsActive) {
-        throw new AppError("O Produto selecionado está inativo");
+      for (const item of items) {
+        const saleItem = await prisma.product.findFirst({
+          where: {
+            id: item.productId,
+            isActive: true,
+          },
+        });
+
+        if (!saleItem) {
+          throw new AppError("O Produto selecionado está inativo");
+        }
+
+        const subtotal = saleItem.price.toNumber() * item.quantity;
+
+        saleTotal += subtotal;
+
+        saleItems.push({
+          id: saleItem.id,
+          name: saleItem.name,
+          quantity: item.quantity,
+          price: saleItem.price,
+          subtotal: subtotal,
+        });
+
+        console.log(`
+          subtotal: ${subtotal},
+          total: ${saleTotal},
+          data: ${saleItems}
+          `);
       }
 
       if (!cashMovement) {
@@ -49,51 +70,67 @@ class SalesController {
         throw new AppError("O caixa esta fechado");
       }
 
-      const price = Number(productIsActive.price);
-
-      const total = price * quantity;
-
-      const newSale = await prisma.sale.create({
-        data: {
-          storeId,
-          code: sale,
-          cashRegisterId: openedCash.id,
-          userId,
-          total,
-          paymentType,
-          saleItems: {
-            create: {
-              storeId,
-              productId: productId,
-              name: productIsActive.name,
-              quantity: quantity,
-              price: price,
-              subtotal: price * quantity,
+      const transaction = await prisma.$transaction(async (db) => {
+        const newSale = await db.sale.create({
+          data: {
+            storeId: storeId,
+            code: sale,
+            cashRegisterId: openedCash.id,
+            userId: userId,
+            total: saleTotal,
+            paymentType: paymentType,
+            saleItems: {
+              create: saleItems.map((item) => ({
+                storeId: storeId,
+                productId: item.id,
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+                subtotal: item.subtotal,
+              })),
             },
           },
-        },
-        include: {
-          saleItems: true,
-        },
+          include: {
+            saleItems: true,
+          },
+        });
+
+        await db.cashMovement.create({
+          data: {
+            storeId: storeId,
+            code: cashMovement,
+            cashRegisterId: openedCash.id,
+            userId: userId,
+            saleId: newSale.id,
+            type: "entrada",
+            description: `Venda #${sale}`,
+            amount: saleTotal,
+            paymentType,
+          },
+        });
+
+        return { newSale };
       });
 
-      await prisma.cashMovement.create({
-        data: {
-          storeId: storeId,
-          code: cashMovement,
-          cashRegisterId: openedCash.id,
-          userId: userId,
-          saleId: newSale.id,
-          type: "entrada",
-          description: `Venda #${newSale.code}`,
-          amount: newSale.total,
-          paymentType: newSale.paymentType,
-        },
-      });
+      const { newSale } = transaction;
 
       return res.status(201).json({
         message: "Venda Criada",
-        sale: newSale,
+        data: {
+          id: newSale.id,
+          code: newSale.code,
+          total: newSale.total,
+          paymentType: newSale.paymentType,
+          createdAt: newSale.createdAt,
+          items: newSale.saleItems.map((item) => ({
+            id: item.id,
+            productId: item.productId,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            subtotal: item.subtotal,
+          })),
+        },
       });
     } catch (error) {
       console.error(error);
@@ -105,9 +142,7 @@ class SalesController {
     try {
       const { storeId } = userIdSchema.parse(req.user);
       const { saleId } = saleParamsSchema.parse(req.params);
-      const { productId, quantity, paymentType } = saleBodySchema.parse(
-        req.body
-      );
+      const { paymentType, items } = saleBodySchema.parse(req.body);
 
       const existingSale = await prisma.sale.findUnique({
         where: { id: saleId },
@@ -149,20 +184,31 @@ class SalesController {
         );
       }
 
-      const productIsActive = await prisma.product.findFirst({
-        where: {
-          id: productId,
-          isActive: true,
-        },
-      });
+      const saleItems: any[] = [];
+      let saleTotal = 0;
 
-      if (!productIsActive) {
-        throw new AppError("O Produto selecionado está inativo");
+      for (const item of items) {
+        const saleItem = await prisma.product.findFirst({
+          where: {
+            id: item.productId,
+            isActive: true,
+          },
+        });
+        if (!saleItem) {
+          throw new AppError("O Produto selecionado está inativo");
+        }
+        const subtotal = saleItem.price.toNumber() * item.quantity;
+
+        saleTotal += subtotal;
+
+        saleItems.push({
+          id: saleItem.id,
+          name: saleItem.name,
+          price: saleItem.price,
+          quantity: item.quantity,
+          subtotal: subtotal,
+        });
       }
-
-      const price = Number(productIsActive.price)
-
-      const total = price * quantity
 
       const [_deleteSaleItem, updateSale, _updateCashMovement] =
         await prisma.$transaction([
@@ -170,16 +216,16 @@ class SalesController {
           prisma.sale.update({
             data: {
               paymentType,
-              total,
+              total: saleTotal,
               saleItems: {
-                create: {
+                create: saleItems.map((item: any) => ({
                   storeId,
-                  productId: productId,
-                  name: productIsActive.name,
-                  quantity: quantity,
-                  price: price,
-                  subtotal: price * quantity,
-                },
+                  productId: item.id,
+                  name: item.name,
+                  quantity: item.quantity,
+                  price: item.price,
+                  subtotal: item.subtotal,
+                })),
               },
             },
             include: { saleItems: true },
@@ -187,7 +233,7 @@ class SalesController {
           }),
           prisma.cashMovement.update({
             data: {
-              amount: total,
+              amount: saleTotal,
               paymentType,
             },
             where: { id: cashMovementId },
@@ -196,7 +242,21 @@ class SalesController {
 
       return res.status(200).json({
         message: "Venda Atualizada",
-        sale: updateSale,
+        data: {
+          id: updateSale.id,
+          code: updateSale.code,
+          total: updateSale.total,
+          paymentType: updateSale.paymentType,
+          createdAt: updateSale.createdAt,
+          items: updateSale.saleItems.map((item) => ({
+            id: item.id,
+            productId: item.productId,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            subtotal: item.subtotal,
+          })),
+        },
       });
     } catch (error) {
       return next(error);
@@ -215,17 +275,11 @@ class SalesController {
 
       const existingSale = await prisma.sale.findUnique({
         where: { id: saleId },
-        include: {
-          cashMovements: true,
-        },
+        include: { saleItems: true },
       });
 
       if (!existingSale) {
         throw new AppError("Venda Inexistente");
-      }
-
-      if (existingSale.storeId !== storeId) {
-        throw new AppError("Não é possível cancelar uma venda de outra loja");
       }
 
       if (existingSale.status === "canceled") {
@@ -247,7 +301,7 @@ class SalesController {
         );
       }
 
-      await prisma.$transaction([
+      const [cancelSale, _newMovement] = await prisma.$transaction([
         prisma.sale.update({
           where: {
             id: saleId,
@@ -273,6 +327,14 @@ class SalesController {
 
       res.status(200).json({
         message: "Venda cancelada",
+        data: {
+          id: cancelSale.id,
+          code: cancelSale.code,
+          total: cancelSale.total,
+          paymentType: cancelSale.paymentType,
+          status: cancelSale.status,
+          createdAt: cancelSale.createdAt,
+        },
       });
     } catch (error) {
       return next(error);
