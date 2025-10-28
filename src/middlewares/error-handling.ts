@@ -19,7 +19,7 @@ function errorHandling(
     });
   }
 
-  return res.status(500).json({ message: error.error });
+  return res.status(500).json({ message: error.message || "Error interno do servidor" });
 }
 
 export { errorHandling };
