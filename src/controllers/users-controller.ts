@@ -38,6 +38,12 @@ class UserController {
         throw new AppError("Este email já está cadastrado");
       }
 
+      const existingCNPJ = await prisma.store.findFirst({ where: { cnpj }})
+
+      if (existingCNPJ) {
+        throw new AppError("Este CNPJ já está cadastrado");
+      }
+
       const hashedPassword = await hash(password, 10);
 
       const store = await prisma.store.create({
