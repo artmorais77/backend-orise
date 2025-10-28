@@ -396,9 +396,10 @@ class SalesController {
   async show(req: Request, res: Response, next: NextFunction) {
     try {
       const { saleId } = saleParamsSchema.parse(req.params);
+      const { storeId } = userIdSchema.parse(req.user);
 
       const existingSale = await prisma.sale.findUnique({
-        where: { id: saleId },
+        where: { id: saleId, storeId: storeId, },
         include: { saleItems: true },
       });
 
