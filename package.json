@@ -5,9 +5,8 @@
   "scripts": {
     "dev": "tsx watch --env-file .env src/server.ts",
     "test:prepare": "dotenv -e .env.test -- prisma migrate reset --force",
-    "test": "npm run test:prepare && jest --runInBand",
-    "test:watch": "npm run test:prepare && jest --watch --runInBand",
-    "test:coverage": "npm run test:prepare && jest --coverage --runInBand"
+    "test": "npm run test:prepare && dotenv -e .env.test -- jest --runInBand",
+    "test:watch": "npm run test:prepare && dotenv -e .env.test -- jest --watch --runInBand"
   },
   "author": "artmorais77",
   "license": "ISC",
