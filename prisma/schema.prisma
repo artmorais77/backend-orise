@@ -49,6 +49,8 @@ model Store {
   cashRegister CashRegister[]
   cashMovement CashMovement[]
   sequence     Sequence[]
+
+  @@map("store")
 }
 
 model User {
@@ -186,4 +188,5 @@ model Sequence {
   store Store @relation(fields: [storeId], references: [id])
 
   @@unique([storeId, entity])
+  @@map("sequence")
 }
