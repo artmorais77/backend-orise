@@ -1,30 +1,23 @@
 import request from "supertest";
 import { app } from "../src/app";
 import { prisma } from "../src/database/prisma";
+import { cleanupDatabase } from "./helpers/cleanupDatabase";
+import { generateUserData } from "./helpers/faker/user-faker";
 
 describe("Sessions routes(/sessions)", () => {
-  beforeEach(async () => {
-    await prisma.user.deleteMany();
-    await prisma.store.deleteMany();
-  });
+  beforeEach(cleanupDatabase);
+  afterEach(cleanupDatabase);
   afterAll(async () => {
     await prisma.$disconnect();
   });
 
   it("deve fazer login", async () => {
-    await request(app).post("/users").send({
-      name: "teste",
-      phoneNumber: "99987654321",
-      email: "teste@email.com",
-      password: "teste123",
-
-      storeName: "Teste",
-      cnpj: "01234567891011",
-    });
+    const user = generateUserData();
+    await request(app).post("/users").send(user);
 
     const response = await request(app).post("/session").send({
-      email: "teste@email.com",
-      password: "teste123",
+      email: user.email,
+      password: user.password,
     });
 
     expect(response.status).toBe(200);
@@ -33,19 +26,12 @@ describe("Sessions routes(/sessions)", () => {
   });
 
   it("deve falhar ao tentar fazer login com email inexistente", async () => {
-    await request(app).post("/users").send({
-      name: "teste",
-      phoneNumber: "99987654321",
-      email: "teste@email.com",
-      password: "teste123",
-
-      storeName: "Teste",
-      cnpj: "01234567891011",
-    });
+    const user = generateUserData();
+    await request(app).post("/users").send(user);
 
     const response = await request(app).post("/session").send({
       email: "teste1@email.com",
-      password: "teste123",
+      password: user.password,
     });
 
     expect(response.status).toBe(400);
@@ -53,18 +39,11 @@ describe("Sessions routes(/sessions)", () => {
   });
 
   it("deve falhar ao tentar fazer login com senha incorreta", async () => {
-    await request(app).post("/users").send({
-      name: "teste",
-      phoneNumber: "99987654321",
-      email: "teste@email.com",
-      password: "teste123",
-
-      storeName: "Teste",
-      cnpj: "01234567891011",
-    });
+    const user = generateUserData();
+    await request(app).post("/users").send(user);
 
     const response = await request(app).post("/session").send({
-      email: "teste@email.com",
+      email: user.email,
       password: "teste1234",
     });
 
@@ -73,15 +52,9 @@ describe("Sessions routes(/sessions)", () => {
   });
 
   it("deve falhar ao tentar fazer login dados inválidos (Zod)", async () => {
-    await request(app).post("/users").send({
-      name: "teste",
-      phoneNumber: "99987654321",
-      email: "teste@email.com",
-      password: "teste123",
+    const user = generateUserData();
 
-      storeName: "Teste",
-      cnpj: "01234567891011",
-    });
+    await request(app).post("/users").send(user);
 
     const response = await request(app).post("/session").send({
       email: "testeemail.com",
@@ -95,19 +68,12 @@ describe("Sessions routes(/sessions)", () => {
   });
 
   it("deve conseguir acessar com o token", async () => {
-    await request(app).post("/users").send({
-      name: "teste",
-      phoneNumber: "99987654321",
-      email: "teste@email.com",
-      password: "teste123",
-
-      storeName: "Teste",
-      cnpj: "01234567891011",
-    });
+    const user = generateUserData();
+    await request(app).post("/users").send(user);
 
     const auth = await request(app).post("/session").send({
-      email: "teste@email.com",
-      password: "teste123",
+      email: user.email,
+      password: user.password,
     });
 
     const token = auth.body.token;

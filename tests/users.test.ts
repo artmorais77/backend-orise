@@ -1,79 +1,57 @@
 import request from "supertest";
 import { app } from "../src/app";
 import { prisma } from "../src/database/prisma";
+import { cleanupDatabase } from "./helpers/cleanupDatabase";
+import { generateUserData } from "./helpers/faker/user-faker";
 
 describe("User routes(/users)", () => {
-  beforeEach(async () => {
-    await prisma.user.deleteMany();
-    await prisma.store.deleteMany();
-  });
-
+  beforeEach(cleanupDatabase);
+  afterEach(cleanupDatabase);
   afterAll(async () => {
     await prisma.$disconnect();
   });
 
   it("deve criar um novo usuário e uma nova loja", async () => {
-    const response = await request(app).post("/users").send({
-      name: "teste",
-      phoneNumber: "99987654321",
-      email: "test@email.com",
-      password: "teste123",
-
-      storeName: "teste",
-      cnpj: "01234567891011",
-    });
+    const user = generateUserData();
+    const response = await request(app).post("/users").send(user);
 
     expect(response.status).toBe(201);
     expect(response.body.user).toHaveProperty("id");
     expect(response.body.store).toHaveProperty("id");
     expect(response.body.user.password).toBeUndefined();
 
-    const user = await prisma.user.findFirst({
+    const existingUser = await prisma.user.findFirst({
       where: { email: response.body.user.email },
     });
 
-    const store = await prisma.store.findUnique({
+    const existingStore = await prisma.store.findUnique({
       where: { id: response.body.store.id },
     });
 
-    expect(user?.storeId).toBe(store?.id);
+    expect(existingUser?.storeId).toBe(existingStore?.id);
   });
 
   it("deve falhar ao criar usuário com email existente", async () => {
-    await request(app).post("/users").send({
-      name: "teste",
-      phoneNumber: "99987654321",
-      email: "test@email.com",
-      password: "teste123",
-
-      storeName: "teste",
-      cnpj: "01234567891011",
-    });
+    const user = generateUserData();
+    await request(app).post("/users").send(user);
 
     const response = await request(app).post("/users").send({
-      name: "teste1",
+      name: "teste",
       phoneNumber: "99987654321",
-      email: "test@email.com",
+      email: user.email,
       password: "teste123",
 
       storeName: "teste1",
       cnpj: "01234567891012",
     });
 
-    expect(response.status).toBe(400)
-    expect(response.body.message).toBe("Este email já está cadastrado")
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("Este email já está cadastrado");
   });
 
   it("deve falhar ao criar loja com CNPJ existente", async () => {
-    await request(app).post("/users").send({
-      name: "teste",
-      phoneNumber: "99987654321",
-      email: "test@email.com",
-      password: "teste123",
-
-      storeName: "teste",
-      cnpj: "01234567891011",
-    });
+    const user = generateUserData();
+    await request(app).post("/users").send(user);
 
     const response = await request(app).post("/users").send({
       name: "teste1",
@@ -82,11 +60,11 @@ describe("User routes(/users)", () => {
       password: "teste123",
 
       storeName: "teste1",
-      cnpj: "01234567891011",
+      cnpj: user.cnpj,
     });
 
-    expect(response.status).toBe(400)
-    expect(response.body.message).toBe("Este CNPJ já está cadastrado")
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("Este CNPJ já está cadastrado");
   });
 
   it("deve falhar ao criar usuário com dados inválidos (Zod)", async () => {
@@ -100,10 +78,10 @@ describe("User routes(/users)", () => {
       cnpj: "12345678910111",
     });
 
-    expect(response.body.issues).toHaveProperty("name")
-    expect(response.body.issues).toHaveProperty("phoneNumber")
-    expect(response.body.issues).toHaveProperty("email")
-    expect(response.body.issues).toHaveProperty("password")
+    expect(response.body.issues).toHaveProperty("name");
+    expect(response.body.issues).toHaveProperty("phoneNumber");
+    expect(response.body.issues).toHaveProperty("email");
+    expect(response.body.issues).toHaveProperty("password");
   });
 
   it("deve falhar ao criar loja com dados inválidos (Zod)", async () => {
@@ -117,6 +95,6 @@ describe("User routes(/users)", () => {
       cnpj: "12.345.678/9101-11",
     });
 
-    expect(response.body.issues).toHaveProperty("cnpj")
+    expect(response.body.issues).toHaveProperty("cnpj");
   });
 });
